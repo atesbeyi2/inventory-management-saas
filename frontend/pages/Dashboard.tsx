@@ -1,30 +1,56 @@
 import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { Package, Warehouse, ShoppingCart, Users, TrendingUp, AlertTriangle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useBackend } from '../hooks/useBackend';
 
 export default function Dashboard() {
   const backend = useBackend();
+  const navigate = useNavigate();
+
+  const { data: company, isLoading: companyLoading, error: companyError } = useQuery({
+    queryKey: ['company'],
+    queryFn: () => backend.company.get(),
+    retry: false,
+  });
 
   const { data: products } = useQuery({
     queryKey: ['products'],
     queryFn: () => backend.inventory.listProducts(),
+    enabled: !!company,
   });
 
   const { data: salesOrders } = useQuery({
     queryKey: ['sales-orders'],
     queryFn: () => backend.orders.listSalesOrders(),
+    enabled: !!company,
   });
 
   const { data: customers } = useQuery({
     queryKey: ['customers'],
     queryFn: () => backend.orders.listCustomers(),
+    enabled: !!company,
   });
 
   const { data: warehouses } = useQuery({
     queryKey: ['warehouses'],
     queryFn: () => backend.company.listWarehouses(),
+    enabled: !!company,
   });
+
+  // If no company found, redirect to setup
+  if (companyError && !companyLoading) {
+    navigate('/setup');
+    return null;
+  }
+
+  if (companyLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   const totalProducts = products?.products.length || 0;
   const totalStock = products?.products.reduce((sum, product) => sum + product.totalStock, 0) || 0;
